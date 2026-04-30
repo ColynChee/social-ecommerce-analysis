@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
-  base: '/社交电商用户行为分析/',
+  base: '/',
   server: {
     port: 5173
   }
