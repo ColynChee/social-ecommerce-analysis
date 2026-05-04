@@ -130,6 +130,16 @@
             <BehaviorFunnel :data="currentBehaviorData" :isDark="isDark" />
           </div>
         </div>
+
+        <div class="behavior-charts-grid">
+         <div class="behavior-chart-section wide-section">
+           <SocialInteractionAnalysis :data="interactionAnalysisData" :isDark="isDark" />
+         </div>
+
+        <div class="behavior-chart-section wide-section">
+         <BehaviorPathAnalysis :data="behaviorPathAnalysisData" :isDark="isDark" />
+        </div>
+</div>
       </div>
     </div>
 
@@ -186,6 +196,8 @@ import SocialScatter from './components/SocialScatter.vue'
 import BehaviorFilterPanel from './components/BehaviorFilterPanel.vue'
 import SocialPurchaseSankey from './components/SocialPurchaseSankey.vue'
 import BehaviorFunnel from './components/BehaviorFunnel.vue'
+import SocialInteractionAnalysis from './components/SocialInteractionAnalysis.vue'
+import BehaviorPathAnalysis from './components/BehaviorPathAnalysis.vue'
 
 export default {
   components: {
@@ -196,7 +208,9 @@ export default {
     SocialScatter,
     BehaviorFilterPanel,
     SocialPurchaseSankey,
-    BehaviorFunnel
+    BehaviorFunnel,
+    SocialInteractionAnalysis,
+    BehaviorPathAnalysis
   },
   setup() {
     const activeTab = ref('overview')
@@ -220,6 +234,16 @@ export default {
     const currentBehaviorData = computed(() => {
       if (!analysisResults.value || !analysisResults.value.behavior_insights) return null
       return analysisResults.value.behavior_insights[currentBehaviorSegment.value]
+    })
+
+    const interactionAnalysisData = computed(() => {
+      if (!analysisResults.value || !analysisResults.value.interaction_analysis) return null
+      return analysisResults.value.interaction_analysis
+    })
+
+    const behaviorPathAnalysisData = computed(() => {
+      if (!analysisResults.value || !analysisResults.value.behavior_path_analysis) return null
+      return analysisResults.value.behavior_path_analysis
     })
 
     const userLevels = computed(() => {
@@ -270,6 +294,8 @@ export default {
       overviewData,
       currentAgeData,
       currentBehaviorData,
+      interactionAnalysisData,
+      behaviorPathAnalysisData,
       userLevels,
       getOverviewMetrics,
       getMetrics,
