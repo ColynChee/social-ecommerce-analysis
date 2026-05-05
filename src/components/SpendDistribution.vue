@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as d3 from 'd3'
 
 export default {
@@ -57,7 +57,7 @@ export default {
           simplified.push({
             range: '10000+',
             count: sum10000Plus,
-            top5_items: []
+            top5_categories: []
           })
         }
 
@@ -271,6 +271,12 @@ export default {
     watch(() => [props.data, props.isDark], () => {
       drawChart()
     }, { deep: true })
+
+    onBeforeUnmount(() => {
+      if (svgRef.value) {
+        d3.select(svgRef.value).selectAll('*').interrupt()
+      }
+    })
 
     return {
       svgRef,

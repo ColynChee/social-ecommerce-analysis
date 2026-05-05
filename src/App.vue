@@ -2,34 +2,62 @@
   <div class="app" :class="{ 'light-mode': !isDark }">
     <div class="header">
       <h1>社交电商用户行为分析</h1>
-      <button class="theme-toggle" @click="isDark = !isDark" :title="isDark ? '切换浅色模式' : '切换深色模式'">
+      <button class="theme-toggle" @click="isDark = !isDark" :aria-label="isDark ? '切换浅色模式' : '切换深色模式'">
         {{ isDark ? '☀️' : '🌙' }}
       </button>
     </div>
 
     <!-- Tab navigation -->
-    <div class="tab-nav">
+    <div class="tab-nav" role="tablist">
       <button
+        role="tab"
+        :aria-selected="activeTab === 'overview'"
         :class="['tab-btn', 'tab-overview', { active: activeTab === 'overview' }]"
         @click="activeTab = 'overview'"
       >
         数据总览
       </button>
       <button
+        role="tab"
+        :aria-selected="activeTab === 'age'"
         :class="['tab-btn', 'tab-age', { active: activeTab === 'age' }]"
         @click="activeTab = 'age'"
       >
         年龄分群
       </button>
       <button
+        role="tab"
+        :aria-selected="activeTab === 'behavior'"
         :class="['tab-btn', 'tab-behavior', { active: activeTab === 'behavior' }]"
         @click="activeTab = 'behavior'"
       >
         行为洞察
       </button>
+      <button
+        role="tab"
+        :aria-selected="activeTab === 'product'"
+        :class="['tab-btn', 'tab-product', { active: activeTab === 'product' }]"
+        @click="activeTab = 'product'"
+      >
+        商品洞察
+      </button>
     </div>
 
     <div class="container">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="state-message">
+        <div class="state-spinner"></div>
+        <div class="state-text">正在加载数据...</div>
+      </div>
+
+      <!-- 错误状态 -->
+      <div v-else-if="error" class="state-message state-error">
+        <div class="state-icon">⚠️</div>
+        <div class="state-text">数据加载失败</div>
+        <div class="state-detail">{{ error }}</div>
+      </div>
+
+      <template v-else>
       <!-- Tab 1: Overview -->
       <div v-if="activeTab === 'overview'" class="tab-content">
         <!-- Main content -->
@@ -141,12 +169,20 @@
         </div>
 </div>
       </div>
+
+      <!-- Tab 4: Product Insights -->
+      <div v-if="activeTab === 'product'" class="tab-content">
+        <ProductFilterPanel :userLevels="userLevels" @filter-change="handleProductFilterChange" />
+
+        <ProductInsights :data="currentProductInsightsData" :isDark="isDark" />
+      </div>
+      </template>
     </div>
 
     <!-- Expanded chart modal -->
-    <div v-if="expandedChart" class="modal-overlay" @click="expandedChart = null">
+    <div v-if="expandedChart" class="modal-overlay" @click="expandedChart = null" role="dialog" aria-modal="true" aria-label="图表放大视图">
       <div class="modal-content" @click.stop>
-        <button class="modal-close" @click="expandedChart = null">✕</button>
+        <button class="modal-close" @click="expandedChart = null" aria-label="关闭">✕</button>
         <div class="modal-chart">
           <SpendDistribution
             v-if="expandedChart === 'spend' && activeTab === 'overview'"
@@ -198,6 +234,8 @@ import SocialPurchaseSankey from './components/SocialPurchaseSankey.vue'
 import BehaviorFunnel from './components/BehaviorFunnel.vue'
 import SocialInteractionAnalysis from './components/SocialInteractionAnalysis.vue'
 import BehaviorPathAnalysis from './components/BehaviorPathAnalysis.vue'
+import ProductFilterPanel from './components/ProductFilterPanel.vue'
+import ProductInsights from './components/ProductInsights.vue'
 
 export default {
   components: {
@@ -210,7 +248,9 @@ export default {
     SocialPurchaseSankey,
     BehaviorFunnel,
     SocialInteractionAnalysis,
-    BehaviorPathAnalysis
+    BehaviorPathAnalysis,
+    ProductFilterPanel,
+    ProductInsights
   },
   setup() {
     const activeTab = ref('overview')
@@ -218,8 +258,11 @@ export default {
     const selectedAge = ref('18-25')
     const analysisResults = ref(null)
     const currentBehaviorSegment = ref('all')
+    const currentProductSegment = ref('all')
     const isDark = ref(true)
     const expandedChart = ref(null)
+    const loading = ref(true)
+    const error = ref(null)
 
     const overviewData = computed(() => {
       if (!analysisResults.value) return null
@@ -244,6 +287,16 @@ export default {
     const behaviorPathAnalysisData = computed(() => {
       if (!analysisResults.value || !analysisResults.value.behavior_path_analysis) return null
       return analysisResults.value.behavior_path_analysis
+    })
+
+    const currentProductInsightsData = computed(() => {
+      if (!analysisResults.value || !analysisResults.value.behavior_insights) return null
+      const segmentData = analysisResults.value.behavior_insights[currentProductSegment.value]
+      if (segmentData && segmentData.product_insights) {
+        return segmentData.product_insights
+      }
+      // 回退到全局级别
+      return analysisResults.value.product_insights || null
     })
 
     const userLevels = computed(() => {
@@ -278,12 +331,26 @@ export default {
       currentBehaviorSegment.value = segmentKey
     }
 
+    const handleProductFilterChange = (filterObj) => {
+      // 从 { age, gender, level } 对象构造 segment key
+      // 例如 { age: '18-25', gender: 'male', level: 'all' } → 'age_18-25_gender_male'
+      const parts = []
+      if (filterObj.age !== 'all') parts.push(`age_${filterObj.age}`)
+      if (filterObj.gender !== 'all') parts.push(`gender_${filterObj.gender}`)
+      if (filterObj.level !== 'all') parts.push(`level_${filterObj.level}`)
+      currentProductSegment.value = parts.length > 0 ? parts.join('_') : 'all'
+    }
+
     onMounted(async () => {
       try {
         const response = await fetch('/data/analysis_results.json')
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
         analysisResults.value = await response.json()
-      } catch (error) {
-        console.error('Failed to load data:', error)
+      } catch (err) {
+        error.value = err.message
+        console.error('Failed to load data:', err)
+      } finally {
+        loading.value = false
       }
     })
 
@@ -296,12 +363,16 @@ export default {
       currentBehaviorData,
       interactionAnalysisData,
       behaviorPathAnalysisData,
+      currentProductInsightsData,
       userLevels,
       getOverviewMetrics,
       getMetrics,
       handleFilterChange,
+      handleProductFilterChange,
       isDark,
-      expandedChart
+      expandedChart,
+      loading,
+      error
     }
   }
 }
@@ -546,46 +617,21 @@ export default {
   color: white;
 }
 
-.tab-btn.tab-overview.active {
-  background: linear-gradient(135deg, #ff8c00 0%, #ff6b00 100%);
-  border-color: #ff8c00;
-  box-shadow: 0 0 30px rgba(255, 140, 0, 0.8), 0 0 60px rgba(255, 107, 0, 0.4);
-  color: white;
+.tab-btn.tab-product {
+  border-color: rgba(255, 193, 7, 0.5);
+  color: #ffc107;
 }
 
-.tab-btn.tab-age {
-  border-color: rgba(255, 165, 0, 0.5);
-  color: #ffa500;
+.tab-btn.tab-product:hover {
+  border-color: #ffc107;
+  background: rgba(255, 193, 7, 0.1);
+  box-shadow: 0 0 25px rgba(255, 193, 7, 0.5), inset 0 0 15px rgba(255, 193, 7, 0.1);
 }
 
-.tab-btn.tab-age:hover {
-  border-color: #ffa500;
-  background: rgba(255, 165, 0, 0.1);
-  box-shadow: 0 0 25px rgba(255, 165, 0, 0.5), inset 0 0 15px rgba(255, 165, 0, 0.1);
-}
-
-.tab-btn.tab-age.active {
-  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-  border-color: #ffa500;
-  box-shadow: 0 0 30px rgba(255, 165, 0, 0.8), 0 0 60px rgba(255, 140, 0, 0.4);
-  color: white;
-}
-
-.tab-btn.tab-behavior {
-  border-color: rgba(255, 184, 0, 0.5);
-  color: #ffb800;
-}
-
-.tab-btn.tab-behavior:hover {
-  border-color: #ffb800;
-  background: rgba(255, 184, 0, 0.1);
-  box-shadow: 0 0 25px rgba(255, 184, 0, 0.5), inset 0 0 15px rgba(255, 184, 0, 0.1);
-}
-
-.tab-btn.tab-behavior.active {
-  background: linear-gradient(135deg, #ffb800 0%, #ffa500 100%);
-  border-color: #ffb800;
-  box-shadow: 0 0 30px rgba(255, 184, 0, 0.8), 0 0 60px rgba(255, 165, 0, 0.4);
+.tab-btn.tab-product.active {
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+  border-color: #ffc107;
+  box-shadow: 0 0 30px rgba(255, 193, 7, 0.8), 0 0 60px rgba(255, 152, 0, 0.4);
   color: white;
 }
 
@@ -715,6 +761,46 @@ export default {
   border-color: var(--border-hover);
 }
 
+/* Loading / Error 状态 */
+.state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 16px;
+}
+
+.state-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(0, 212, 255, 0.2);
+  border-top-color: #00d4ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.state-text {
+  font-size: 18px;
+  color: var(--text-primary, white);
+  font-weight: 600;
+  text-shadow: 0 0 10px var(--shadow-glow, rgba(0, 212, 255, 0.6));
+}
+
+.state-detail {
+  font-size: 14px;
+  color: var(--text-primary, white);
+  opacity: 0.6;
+}
+
+.state-error .state-icon {
+  font-size: 48px;
+}
+
 .footer {
   background: var(--bg-btn);
   backdrop-filter: blur(10px);
@@ -795,7 +881,80 @@ export default {
 
 @media (max-width: 1024px) {
   .main-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .behavior-charts-grid {
     grid-template-columns: 1fr;
+  }
+
+  .header h1 {
+    font-size: 32px;
+    letter-spacing: 1px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tab-nav {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-width: calc(50% - 10px);
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .age-selector {
+    flex-wrap: wrap;
+  }
+
+  .age-btn {
+    min-width: calc(50% - 10px);
+  }
+}
+
+@media (max-width: 480px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header h1 {
+    font-size: 24px;
+    letter-spacing: 0.5px;
+  }
+
+  .header {
+    padding: 20px 15px;
+  }
+
+  .container {
+    padding: 0 15px;
+  }
+
+  .tab-nav {
+    padding: 0 15px 20px 15px;
+    gap: 8px;
+  }
+
+  .tab-btn {
+    min-width: 100%;
+    padding: 10px 16px;
+    font-size: 14px;
   }
 }
 </style>

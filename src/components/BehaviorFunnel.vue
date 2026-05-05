@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as d3 from 'd3'
 
 export default {
@@ -92,7 +92,8 @@ export default {
           .text(d.step)
 
         // Count and conversion rate (right side)
-        const conversionRate = i === 0 ? '100%' : `${((d.count / funnelData[i - 1].count) * 100).toFixed(1)}%`
+        const prevCount = i === 0 ? d.count : funnelData[i - 1].count
+        const conversionRate = prevCount === 0 ? '—' : `${((d.count / prevCount) * 100).toFixed(1)}%`
 
         g.append('text')
           .attr('x', innerWidth + 10)
@@ -120,6 +121,12 @@ export default {
     watch(() => [props.data, props.isDark], () => {
       drawChart()
     }, { deep: true })
+
+    onBeforeUnmount(() => {
+      if (svgRef.value) {
+        d3.select(svgRef.value).selectAll('*').interrupt()
+      }
+    })
 
     return {
       svgRef,
