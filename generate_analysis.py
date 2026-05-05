@@ -79,7 +79,11 @@ user_data['social_level'] = pd.qcut(
 def safe_float(value, default=0.0):
     if pd.isna(value):
         return default
-    return float(value)
+    result = float(value)
+    # 拒绝 Infinity / -Infinity，它们不是合法的 JSON 值
+    if not np.isfinite(result):
+        return default
+    return result
 
 
 def safe_int(value, default=0):
@@ -159,17 +163,8 @@ def make_top_categories(source_df):
 
 def make_social_scatter(source_user_data):
     """社交活跃度与消费金额散点数据。"""
-    scatter = []
-
-    for _, user in source_user_data.iterrows():
-        scatter.append({
-            'social_activity': safe_float(user['social_activity']),
-            'total_spend': safe_float(user['total_spend']),
-            'fans_num': safe_int(user['fans_num']),
-            'follow_num': safe_int(user['follow_num'])
-        })
-
-    return scatter
+    cols = ['social_activity', 'total_spend', 'fans_num', 'follow_num']
+    return source_user_data[cols].to_dict('records')
 
 
 def compute_social_purchase(subset):
@@ -783,6 +778,212 @@ def compute_product_behavior_analysis(subset):
 
 
 # =========================
+# 7b. Product Insights analysis (B同学模块)
+# =========================
+def compute_product_insights_analysis(subset):
+    """
+    商品洞察分析：为 ProductInsights.vue 前端组件提供数据。
+    包含：
+    1. 价格×折扣 转化热力图（含联动类目数据 + is_reliable 标记）
+    2. 类目行为对比（含归一化指标）
+    3. 价格敏感度曲线
+    """
+    temp = subset.copy()
+
+    if len(temp) == 0:
+        return {
+            'heatmap': [],
+            'category_behavior': [],
+            'price_sensitivity': [],
+            'price_bins': [],
+            'discount_bins': []
+        }
+
+    # ---- 价格分箱（与现有函数一致）----
+    price_bins = [0, 50, 100, 200, 500, np.inf]
+    price_labels = ['0-50', '50-100', '100-200', '200-500', '500+']
+    temp['pi_price_group'] = pd.cut(
+        temp['price'],
+        bins=price_bins,
+        labels=price_labels,
+        include_lowest=True,
+        right=True
+    )
+
+    # ---- 折扣分箱（用户指定的 5 档）----
+    # discount_rate == 0 归入"无折扣"，其余按区间划分
+    discount_bins = [-0.001, 0.001, 0.10, 0.30, 0.50, np.inf]
+    discount_labels = ['无折扣', '0-10%', '10-30%', '30-50%', '50%+']
+    temp['pi_discount_group'] = pd.cut(
+        temp['discount_rate'],
+        bins=discount_bins,
+        labels=discount_labels,
+        include_lowest=True,
+        right=True
+    )
+
+    # ---- 1. 热力图数据：价格×折扣 → 购买率 ----
+    heatmap_grouped = temp.groupby(
+        ['pi_price_group', 'pi_discount_group'], observed=False
+    ).agg(
+        count=('user_id', 'count'),
+        purchase_rate=('label', 'mean'),
+        cart_rate=('has_cart', 'mean'),
+        avg_spend=('total_spend', 'mean'),
+        avg_pv=('pv_count', 'mean'),
+        avg_like=('like_num', 'mean'),
+        avg_comment=('comment_num', 'mean'),
+        avg_share=('share_num', 'mean')
+    ).reset_index()
+
+    heatmap = []
+    for _, row in heatmap_grouped.iterrows():
+        cell_count = safe_int(row['count'])
+        is_reliable = cell_count >= 50  # 样本量阈值
+
+        # 提取该格子内的类目分布（用于联动柱状图）
+        mask = (
+            (temp['pi_price_group'] == row['pi_price_group']) &
+            (temp['pi_discount_group'] == row['pi_discount_group'])
+        )
+        cell_df = temp[mask]
+
+        category_breakdown = []
+        if len(cell_df) > 0:
+            cat_grouped = cell_df.groupby('category').agg(
+                count=('user_id', 'count'),
+                purchase_rate=('label', 'mean'),
+                cart_rate=('has_cart', 'mean'),
+                pv_count_avg=('pv_count', 'mean'),
+                like_avg=('like_num', 'mean'),
+                comment_avg=('comment_num', 'mean'),
+                share_avg=('share_num', 'mean')
+            ).reset_index()
+
+            for _, cat_row in cat_grouped.iterrows():
+                category_breakdown.append({
+                    'category': str(cat_row['category']),
+                    'count': safe_int(cat_row['count']),
+                    'purchase_rate': safe_float(cat_row['purchase_rate']),
+                    'cart_rate': safe_float(cat_row['cart_rate']),
+                    'pv_count_avg': safe_float(cat_row['pv_count_avg']),
+                    'like_avg': safe_float(cat_row['like_avg']),
+                    'comment_avg': safe_float(cat_row['comment_avg']),
+                    'share_avg': safe_float(cat_row['share_avg'])
+                })
+
+        heatmap.append({
+            'price_group': str(row['pi_price_group']),
+            'discount_group': str(row['pi_discount_group']),
+            'count': cell_count,
+            'purchase_rate': safe_float(row['purchase_rate']),
+            'cart_rate': safe_float(row['cart_rate']),
+            'avg_spend': safe_float(row['avg_spend']),
+            'avg_pv': safe_float(row['avg_pv']),
+            'avg_like': safe_float(row['avg_like']),
+            'avg_comment': safe_float(row['avg_comment']),
+            'avg_share': safe_float(row['avg_share']),
+            'is_reliable': is_reliable,
+            'category_breakdown': category_breakdown
+        })
+
+    # ---- 2. 类目行为对比（含归一化指标）----
+    cat_behavior = temp.groupby('category').agg(
+        count=('user_id', 'count'),
+        avg_price=('price', 'mean'),
+        avg_discount_rate=('discount_rate', 'mean'),
+        pv_count_avg=('pv_count', 'mean'),
+        cart_rate=('has_cart', 'mean'),
+        coupon_received_rate=('has_coupon_received', 'mean'),
+        coupon_used_rate=('has_coupon_used', 'mean'),
+        purchase_rate=('label', 'mean'),
+        like_avg=('like_num', 'mean'),
+        comment_avg=('comment_num', 'mean'),
+        share_avg=('share_num', 'mean')
+    ).reset_index()
+
+    cat_behavior = cat_behavior.sort_values('purchase_rate', ascending=False)
+
+    # Max-Min 归一化：将 pv_count_avg、cart_rate、purchase_rate 映射到 0~1
+    pv_values = cat_behavior['pv_count_avg'].values
+    cart_values = cat_behavior['cart_rate'].values
+    purchase_values = cat_behavior['purchase_rate'].values
+
+    pv_min, pv_max = pv_values.min(), pv_values.max()
+    cart_min, cart_max = cart_values.min(), cart_values.max()
+    purchase_min, purchase_max = purchase_values.min(), purchase_values.max()
+
+    def normalize(val, vmin, vmax):
+        if vmax == vmin:
+            return 0.5
+        return safe_float((val - vmin) / (vmax - vmin))
+
+    category_behavior = []
+    for _, row in cat_behavior.iterrows():
+        category_behavior.append({
+            'category': str(row['category']),
+            'count': safe_int(row['count']),
+            'avg_price': safe_float(row['avg_price']),
+            'avg_discount_rate': safe_float(row['avg_discount_rate']),
+            'pv_count_avg': safe_float(row['pv_count_avg']),
+            'cart_rate': safe_float(row['cart_rate']),
+            'coupon_received_rate': safe_float(row['coupon_received_rate']),
+            'coupon_used_rate': safe_float(row['coupon_used_rate']),
+            'purchase_rate': safe_float(row['purchase_rate']),
+            'like_avg': safe_float(row['like_avg']),
+            'comment_avg': safe_float(row['comment_avg']),
+            'share_avg': safe_float(row['share_avg']),
+            # 归一化后的值，用于前端柱状图统一比较
+            'normalized_pv': normalize(row['pv_count_avg'], pv_min, pv_max),
+            'normalized_cart_rate': normalize(row['cart_rate'], cart_min, cart_max),
+            'normalized_purchase_rate': normalize(row['purchase_rate'], purchase_min, purchase_max)
+        })
+
+    # ---- 3. 价格敏感度曲线（更细粒度的 10 档）----
+    sensitivity_bins = [0, 30, 60, 100, 150, 200, 300, 500, 800, 1500, np.inf]
+    sensitivity_labels = ['0-30', '30-60', '60-100', '100-150', '150-200',
+                          '200-300', '300-500', '500-800', '800-1500', '1500+']
+    temp['pi_sensitivity_group'] = pd.cut(
+        temp['price'],
+        bins=sensitivity_bins,
+        labels=sensitivity_labels,
+        include_lowest=True,
+        right=True
+    )
+
+    sensitivity_grouped = temp.groupby('pi_sensitivity_group', observed=False).agg(
+        purchase_rate=('label', 'mean'),
+        count=('user_id', 'count')
+    ).reset_index()
+
+    price_sensitivity = []
+    for _, row in sensitivity_grouped.iterrows():
+        label = str(row['pi_sensitivity_group'])
+        midpoint = 0
+        if label in sensitivity_labels:
+            idx = sensitivity_labels.index(label)
+            left = sensitivity_bins[idx]
+            right = sensitivity_bins[idx + 1]
+            # 最后一个区间上界是 np.inf，用 left * 1.5 作为合理的中点
+            midpoint = safe_float((left + right) / 2 if np.isfinite(right) else left * 1.5)
+
+        price_sensitivity.append({
+            'price_range': label,
+            'price_midpoint': midpoint,
+            'purchase_rate': safe_float(row['purchase_rate']),
+            'count': safe_int(row['count'])
+        })
+
+    return {
+        'heatmap': heatmap,
+        'category_behavior': category_behavior,
+        'price_sensitivity': price_sensitivity,
+        'price_bins': price_labels,
+        'discount_bins': discount_labels
+    }
+
+
+# =========================
 # 8. Generate results
 # =========================
 results = {
@@ -794,7 +995,8 @@ results = {
     # New global-level analysis
     'interaction_analysis': {},
     'behavior_path_analysis': {},
-    'product_behavior_analysis': {}
+    'product_behavior_analysis': {},
+    'product_insights': {}
 }
 
 # =========================
@@ -858,14 +1060,48 @@ for age_group in ['18-25', '26-35', '36-45', '46+']:
 # =========================
 segments = {'all': df}
 
-for age in ['18-25', '26-35', '36-45', '46+']:
+age_list = ['18-25', '26-35', '36-45', '46+']
+gender_list = [(0, 'male'), (1, 'female')]
+level_list = sorted(df['user_level'].dropna().unique().tolist())
+
+# 单维度
+for age in age_list:
     segments[f'age_{age}'] = df[df['age_group'] == age]
 
-for gender, lbl in [(0, 'male'), (1, 'female')]:
+for gender, lbl in gender_list:
     segments[f'gender_{lbl}'] = df[df['gender'] == gender]
 
-for level in sorted(df['user_level'].dropna().unique().tolist()):
+for level in level_list:
     segments[f'level_{int(level)}'] = df[df['user_level'] == level]
+
+# 2维组合：年龄×性别
+for age in age_list:
+    for gender, lbl in gender_list:
+        seg = df[(df['age_group'] == age) & (df['gender'] == gender)]
+        if len(seg) >= 50:
+            segments[f'age_{age}_gender_{lbl}'] = seg
+
+# 2维组合：年龄×等级
+for age in age_list:
+    for level in level_list:
+        seg = df[(df['age_group'] == age) & (df['user_level'] == level)]
+        if len(seg) >= 50:
+            segments[f'age_{age}_level_{int(level)}'] = seg
+
+# 2维组合：性别×等级
+for gender, lbl in gender_list:
+    for level in level_list:
+        seg = df[(df['gender'] == gender) & (df['user_level'] == level)]
+        if len(seg) >= 50:
+            segments[f'gender_{lbl}_level_{int(level)}'] = seg
+
+# 3维组合：年龄×性别×等级
+for age in age_list:
+    for gender, lbl in gender_list:
+        for level in level_list:
+            seg = df[(df['age_group'] == age) & (df['gender'] == gender) & (df['user_level'] == level)]
+            if len(seg) >= 50:
+                segments[f'age_{age}_gender_{lbl}_level_{int(level)}'] = seg
 
 for seg_name, seg_data in segments.items():
     if len(seg_data) > 0:
@@ -880,19 +1116,30 @@ for seg_name, seg_data in segments.items():
             'behavior_path_analysis': compute_behavior_path_analysis(seg_data),
 
             # Optional support for teammate B
-            'product_behavior_analysis': compute_product_behavior_analysis(seg_data)
+            'product_behavior_analysis': compute_product_behavior_analysis(seg_data),
+
+            # B同学：商品洞察模块
+            'product_insights': compute_product_insights_analysis(seg_data)
         }
 
 # Global-level convenience keys
 results['interaction_analysis'] = compute_interaction_analysis(df)
 results['behavior_path_analysis'] = compute_behavior_path_analysis(df)
 results['product_behavior_analysis'] = compute_product_behavior_analysis(df)
+results['product_insights'] = compute_product_insights_analysis(df)
 
 # =========================
 # 12. Save to JSON
 # =========================
+output_json = json.dumps(results, indent=2, ensure_ascii=False)
+
+# 写入根目录（供分析使用）
 with open('analysis_results.json', 'w', encoding='utf-8') as f:
-    json.dump(results, f, indent=2, ensure_ascii=False)
+    f.write(output_json)
+
+# 写入 public/data/（供前端加载）
+with open('public/data/analysis_results.json', 'w', encoding='utf-8') as f:
+    f.write(output_json)
 
 print("Results saved to analysis_results.json")
 
@@ -909,6 +1156,7 @@ print("\nNew analysis added:")
 print("  - interaction_analysis")
 print("  - behavior_path_analysis")
 print("  - product_behavior_analysis")
+print("  - product_insights (B同学商品洞察模块)")
 print("\nGlobal behavior path top 5:")
 for item in results['behavior_path_analysis']['path_ranking'][:5]:
     print(f"  {item['path']} | count={item['count']} | purchase_rate={item['purchase_rate']:.2%}")

@@ -18,7 +18,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as d3 from 'd3'
 
 export default {
@@ -31,6 +31,8 @@ export default {
     const width = 330
     const height = 330
     const hoveredIndex = ref(null)
+    // 生成唯一 ID 前缀，避免多个 GenderPie 实例的 SVG defs 冲突
+    const uid = 'gp-' + Math.random().toString(36).slice(2, 8)
 
     const drawChart = () => {
       if (!svgRef.value || !props.data) return
@@ -53,7 +55,7 @@ export default {
 
       // Gradient for male
       defs.append('linearGradient')
-        .attr('id', 'gradient-male')
+        .attr('id', `${uid}-gradient-male`)
         .attr('x1', '0%')
         .attr('y1', '0%')
         .attr('x2', '100%')
@@ -70,7 +72,7 @@ export default {
 
       // Gradient for female
       defs.append('linearGradient')
-        .attr('id', 'gradient-female')
+        .attr('id', `${uid}-gradient-female`)
         .attr('x1', '0%')
         .attr('y1', '0%')
         .attr('x2', '100%')
@@ -87,7 +89,7 @@ export default {
 
       // Shadow filter
       const filter = defs.append('filter')
-        .attr('id', 'shadow')
+        .attr('id', `${uid}-shadow`)
         .attr('x', '-50%')
         .attr('y', '-50%')
         .attr('width', '200%')
@@ -111,12 +113,12 @@ export default {
         .enter()
         .append('g')
         .attr('class', 'arc')
-        .attr('filter', 'url(#shadow)')
+        .attr('filter', `url(#${uid}-shadow)`)
 
       // Add 3D effect with shadow
       arcs.append('path')
         .attr('d', arc)
-        .attr('fill', (d, i) => i === 0 ? 'url(#gradient-male)' : 'url(#gradient-female)')
+        .attr('fill', (d, i) => i === 0 ? `url(#${uid}-gradient-male)` : `url(#${uid}-gradient-female)`)
         .attr('opacity', 0.9)
         .attr('stroke', textColor)
         .attr('stroke-width', 3)
@@ -171,6 +173,12 @@ export default {
     watch(() => [props.data, props.isDark], () => {
       drawChart()
     }, { deep: true })
+
+    onBeforeUnmount(() => {
+      if (svgRef.value) {
+        d3.select(svgRef.value).selectAll('*').interrupt()
+      }
+    })
 
     return {
       svgRef,
