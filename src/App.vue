@@ -343,7 +343,7 @@ export default {
 
     onMounted(async () => {
       try {
-        const response = await fetch('/data/analysis_results.json')
+        const response = await fetch(`${import.meta.env.BASE_URL}data/analysis_results.json`)
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         analysisResults.value = await response.json()
       } catch (err) {
