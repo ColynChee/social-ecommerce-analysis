@@ -1,7 +1,11 @@
 <template>
   <div class="social-purchase-sankey">
     <h2>社交互动与购买关系</h2>
-    <svg ref="svgRef" :width="width" :height="height"></svg>
+    <svg
+      ref="svgRef"
+      :viewBox="`0 0 ${width} ${height}`"
+      preserveAspectRatio="xMidYMid meet"
+    ></svg>
   </div>
 </template>
 
@@ -16,8 +20,8 @@ export default {
   },
   setup(props) {
     const svgRef = ref(null)
-    const width = 1100
-    const height = 700
+    const width = 1000
+    const height = 750
     const margin = { top: 30, right: 220, bottom: 30, left: 100 }
 
     const drawChart = () => {
@@ -205,18 +209,18 @@ export default {
           .attr('text-anchor', isLeftNode ? 'end' : 'start')
           .attr('dominant-baseline', 'middle')
           .attr('fill', textColor)
-          .attr('font-size', '12px')
+          .attr('font-size', '16px')
           .attr('font-weight', '600')
           .text(nodes[i].name)
 
         // Node value
         nodeGroup.append('text')
           .attr('x', pos.x + (isLeftNode ? -25 : 25))
-          .attr('y', pos.y + 12)
+          .attr('y', pos.y + 18)
           .attr('text-anchor', isLeftNode ? 'end' : 'start')
           .attr('dominant-baseline', 'middle')
           .attr('fill', props.isDark ? '#00d4ff' : '#0099cc')
-          .attr('font-size', '11px')
+          .attr('font-size', '14px')
           .text(`${nodeValues[i].toLocaleString()}`)
       })
     }
@@ -247,20 +251,28 @@ export default {
 <style scoped>
 .social-purchase-sankey {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 h2 {
   font-size: 20px;
-  margin-bottom: 20px;
+  margin: 0 0 8px 0;
   color: var(--text-primary, white);
   font-weight: 700;
   letter-spacing: 0.5px;
   text-shadow: 0 0 10px var(--shadow-glow, rgba(0, 212, 255, 0.6));
+  flex-shrink: 0;
 }
 
 svg {
   width: 100%;
-  height: auto;
+  flex: 1;
+  min-height: 0;
+  display: block;
   filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.4));
+  overflow: hidden;
 }
 </style>

@@ -2,7 +2,11 @@
   <div class="spend-distribution">
     <h2 v-if="!isExpanded">消费金额分布</h2>
     <h2 v-else class="expanded-title">消费金额分布（{{ ageGroup === 'overview' ? '数据总览' : ageGroup }}）</h2>
-    <svg ref="svgRef" :width="width" :height="height"></svg>
+    <svg
+      ref="svgRef"
+      :viewBox="`0 0 ${width} ${height}`"
+      preserveAspectRatio="xMidYMid meet"
+    ></svg>
   </div>
 </template>
 
@@ -20,7 +24,7 @@ export default {
   setup(props) {
     const svgRef = ref(null)
     const width = props.isExpanded ? window.innerWidth * 0.9 : 500
-    const height = props.isExpanded ? window.innerHeight * 0.79 : 545
+    const height = props.isExpanded ? window.innerHeight * 0.70 : 555
     const margin = props.isExpanded
       ? { top: 40, right: 50, bottom: 80, left: 120 }
       : { top: 30, right: 30, bottom: 80, left: 70 }
@@ -209,7 +213,7 @@ export default {
       g.append('text')
         .attr('x', legendX + 40)
         .attr('y', legendY + 5)
-        .attr('font-size', props.isExpanded ? '20px' : '12px')
+        .attr('font-size', props.isExpanded ? '20px' : '16px')
         .attr('fill', axisColor)
         .text('密度曲线')
 
@@ -228,7 +232,7 @@ export default {
         .attr('x', innerWidth / 2)
         .attr('y', innerHeight + (props.isExpanded ? 95 : 68))
         .attr('text-anchor', 'middle')
-        .attr('font-size', props.isExpanded ? '18px' : '12px')
+        .attr('font-size', props.isExpanded ? '18px' : '14px')
         .attr('fill', axisColor)
         .text('消费金额(元)')
 
@@ -247,7 +251,7 @@ export default {
         .attr('x', -innerHeight / 2)
         .attr('y', props.isExpanded ? -margin.left + 35 : -margin.left + 20)
         .attr('text-anchor', 'middle')
-        .attr('font-size', props.isExpanded ? '18px' : '12px')
+        .attr('font-size', props.isExpanded ? '18px' : '14px')
         .attr('fill', axisColor)
         .text('用户数(人)')
 
@@ -290,16 +294,21 @@ export default {
 <style scoped>
 .spend-distribution {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 h2 {
-  font-size: 16px;
-  margin-bottom: 0px;
+  font-size: 20px;
+  margin: 0 0 8px 0;
   color: var(--text-primary, white);
   font-weight: 700;
   letter-spacing: 0.5px;
   text-shadow: 0 0 10px var(--shadow-glow, rgba(0, 212, 255, 0.6));
   text-align: center;
+  flex-shrink: 0;
 }
 
 h2:last-of-type {
@@ -312,8 +321,11 @@ h2:last-of-type {
 
 svg {
   width: 100%;
-  height: auto;
+  flex: 1;
+  min-height: 0;
+  display: block;
   filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.4));
+  overflow: hidden;
 }
 </style>
 

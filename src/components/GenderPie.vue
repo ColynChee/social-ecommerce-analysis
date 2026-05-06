@@ -2,7 +2,11 @@
   <div class="gender-pie">
     <h2>性别分布</h2>
     <div class="chart-container">
-      <svg ref="svgRef" :width="width" :height="height"></svg>
+      <svg
+        ref="svgRef"
+        :viewBox="`0 0 ${width} ${height}`"
+        preserveAspectRatio="xMidYMid meet"
+      ></svg>
       <div class="legend">
         <div class="legend-item male">
           <span class="dot"></span>
@@ -28,8 +32,8 @@ export default {
   },
   setup(props) {
     const svgRef = ref(null)
-    const width = 330
-    const height = 330
+    const width = 300
+    const height = 300
     const hoveredIndex = ref(null)
     // 生成唯一 ID 前缀，避免多个 GenderPie 实例的 SVG defs 冲突
     const uid = 'gp-' + Math.random().toString(36).slice(2, 8)
@@ -48,7 +52,7 @@ export default {
         { label: '女性', value: props.data.gender_distribution.female_ratio * 100, count: props.data.gender_distribution.female, color: '#FF6B9D' }
       ]
 
-      const radius = Math.min(width, height) / 2 - 30
+      const radius = Math.min(width, height) / 2 - 18
 
       // Add defs for gradients and filters
       const defs = svg.append('defs')
@@ -106,7 +110,7 @@ export default {
 
       const pie = d3.pie().value(d => d.value)
       const arc = d3.arc().innerRadius(0).outerRadius(radius)
-      const arcHover = d3.arc().innerRadius(0).outerRadius(radius + 10)
+      const arcHover = d3.arc().innerRadius(0).outerRadius(radius + 6)
 
       const arcs = g.selectAll('.arc')
         .data(pie(genderData))
@@ -145,7 +149,7 @@ export default {
         .attr('class', 'label-text')
         .attr('transform', d => `translate(${arc.centroid(d)})`)
         .attr('text-anchor', 'middle')
-        .attr('font-size', '14px')
+        .attr('font-size', '18px')
         .attr('fill', textColor)
         .attr('font-weight', 'bold')
         .attr('opacity', 0)
@@ -199,29 +203,36 @@ export default {
 
 h2 {
   font-size: 20px;
-  margin-bottom: 16px;
+  margin: 0 0 12px 0;
   color: var(--text-primary, white);
   font-weight: 700;
   letter-spacing: 0.5px;
   text-shadow: 0 0 10px var(--shadow-glow, rgba(0, 212, 255, 0.6));
+  flex-shrink: 0;
 }
 
 .chart-container {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
+  justify-content: center;
+  gap: 14px;
+  overflow: hidden;
 }
 
 svg {
-  width: 100%;
+  width: min(100%, 310px);
+  aspect-ratio: 1 / 1;
   height: auto;
-  max-width: 500px;
+  display: block;
+  flex-shrink: 0;
   filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.4));
   cursor: pointer;
   transition: filter 0.3s ease;
-  overflow: visible;
+  overflow: hidden;
 }
 
 svg:hover {

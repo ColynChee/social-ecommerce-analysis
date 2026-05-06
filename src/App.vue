@@ -750,6 +750,14 @@ export default {
   transition: all 0.3s ease;
 }
 
+.gender-section,
+.spend-section,
+.category-section,
+.social-section {
+  height: 480px;
+  overflow: hidden;
+}
+
 .metrics-section:hover,
 .gender-section:hover,
 .spend-section:hover,

@@ -1,7 +1,11 @@
 <template>
   <div class="behavior-funnel">
     <h2>行为转化漏斗</h2>
-    <svg ref="svgRef" :width="width" :height="height"></svg>
+    <svg
+      ref="svgRef"
+      :viewBox="`0 0 ${width} ${height}`"
+      preserveAspectRatio="xMidYMid meet"
+    ></svg>
   </div>
 </template>
 
@@ -18,7 +22,7 @@ export default {
     const svgRef = ref(null)
     const width = 950
     const height = 650
-    const margin = { top: 20, right: 180, bottom: 20, left: 300 }
+    const margin = { top: 20, right: 200, bottom: 20, left: 200 }
 
     const drawChart = () => {
       if (!svgRef.value || !props.data || !props.data.funnel) return
@@ -87,7 +91,7 @@ export default {
           .attr('text-anchor', 'end')
           .attr('dominant-baseline', 'middle')
           .attr('fill', textColor)
-          .attr('font-size', '14px')
+          .attr('font-size', '18px')
           .attr('font-weight', '600')
           .text(d.step)
 
@@ -100,16 +104,16 @@ export default {
           .attr('y', y + stepHeight / 2 - 5)
           .attr('text-anchor', 'start')
           .attr('fill', props.isDark ? '#00d4ff' : '#0099cc')
-          .attr('font-size', '13px')
+          .attr('font-size', '18px')
           .attr('font-weight', '600')
           .text(`${d.count.toLocaleString()}`)
 
         g.append('text')
           .attr('x', innerWidth + 10)
-          .attr('y', y + stepHeight / 2 + 10)
+          .attr('y', y + stepHeight / 2 + 15)
           .attr('text-anchor', 'start')
           .attr('fill', props.isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(26, 26, 46, 0.7)')
-          .attr('font-size', '11px')
+          .attr('font-size', '16px')
           .text(`转化: ${conversionRate}`)
       })
     }
@@ -140,20 +144,28 @@ export default {
 <style scoped>
 .behavior-funnel {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 h2 {
   font-size: 20px;
-  margin-bottom: 20px;
+  margin: 0 0 8px 0;
   color: var(--text-primary, white);
   font-weight: 700;
   letter-spacing: 0.5px;
   text-shadow: 0 0 10px var(--shadow-glow, rgba(0, 212, 255, 0.6));
+  flex-shrink: 0;
 }
 
 svg {
   width: 100%;
-  height: auto;
+  flex: 1;
+  min-height: 0;
+  display: block;
   filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.4));
+  overflow: hidden;
 }
 </style>

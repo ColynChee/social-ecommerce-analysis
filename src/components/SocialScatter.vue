@@ -2,7 +2,11 @@
   <div class="social-scatter">
     <h2 v-if="!isExpanded">社交活跃度与消费关系</h2>
     <h2 v-else class="expanded-title">社交活跃度与消费关系（{{ ageGroup === 'overview' ? '数据总览' : ageGroup }}）</h2>
-    <svg ref="svgRef" :width="width" :height="height"></svg>
+    <svg
+      ref="svgRef"
+      :viewBox="`0 0 ${width} ${height}`"
+      preserveAspectRatio="xMidYMid meet"
+    ></svg>
   </div>
 </template>
 
@@ -20,10 +24,10 @@ export default {
   setup(props) {
     const svgRef = ref(null)
     const width = props.isExpanded ? window.innerWidth * 0.9 : 550
-    const height = props.isExpanded ? window.innerHeight * 0.75 : 520
+    const height = props.isExpanded ? window.innerHeight * 0.7 : 600
     const margin = props.isExpanded
       ? { top: 40, right: 50, bottom: 50, left: 120 }
-      : { top: 20, right: 20, bottom: 80, left: 100 }
+      : { top: 20, right: 10, bottom: 60, left:90 }
 
     const drawChart = () => {
       if (!svgRef.value || !props.data || !props.data.social_scatter) return
@@ -64,7 +68,7 @@ export default {
         .attr('x', innerWidth / 2)
         .attr('y', innerHeight + (props.isExpanded ? 60 : 45))
         .attr('text-anchor', 'middle')
-        .attr('font-size', props.isExpanded ? '18px' : '12px')
+        .attr('font-size', props.isExpanded ? '18px' : '14px')
         .attr('fill', axisColor)
         .text('社交活跃度')
 
@@ -85,7 +89,7 @@ export default {
         .attr('x', -innerHeight / 2)
         .attr('y', -margin.left + 30)
         .attr('text-anchor', 'middle')
-        .attr('font-size', props.isExpanded ? '18px' : '12px')
+        .attr('font-size', props.isExpanded ? '18px' : '14px')
         .attr('fill', axisColor)
         .text('消费金额 (¥)')
 
@@ -194,7 +198,7 @@ export default {
         .attr('x', innerWidth - 10)
         .attr('y', annotationY1)
         .attr('text-anchor', 'end')
-        .attr('font-size', props.isExpanded ? '20px' : '12px')
+        .attr('font-size', props.isExpanded ? '20px' : '16px')
         .attr('fill', axisColor)
         .attr('opacity', 0.8)
         .text(`节点数: ${data.length}`)
@@ -203,7 +207,7 @@ export default {
         .attr('x', innerWidth - 10)
         .attr('y', annotationY2)
         .attr('text-anchor', 'end')
-        .attr('font-size', props.isExpanded ? '20px' : '12px')
+        .attr('font-size', props.isExpanded ? '20px' : '16px')
         .attr('fill', axisColor)
         .attr('opacity', 0.8)
         .text('虚线：趋势线')
@@ -212,7 +216,7 @@ export default {
         .attr('x', innerWidth - 10)
         .attr('y', annotationY3)
         .attr('text-anchor', 'end')
-        .attr('font-size', props.isExpanded ? '20px' : '12px')
+        .attr('font-size', props.isExpanded ? '20px' : '16px')
         .attr('fill', axisColor)
         .attr('opacity', 0.8)
         .text('社交活跃度 = 粉丝数 + 关注数')
@@ -259,16 +263,21 @@ export default {
 <style scoped>
 .social-scatter {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 h2 {
-  font-size: 16px;
-  margin-bottom: 60px;
+  font-size: 20px;
+  margin: 0 0 8px 0;
   color: var(--text-primary, white);
   font-weight: 700;
   letter-spacing: 0.5px;
   text-shadow: 0 0 10px var(--shadow-glow, rgba(0, 212, 255, 0.6));
   text-align: center;
+  flex-shrink: 0;
 }
 h2:last-of-type {
   font-size: 25px;
@@ -280,7 +289,10 @@ h2:last-of-type {
 
 svg {
   width: 100%;
-  height: auto;
+  flex: 1;
+  min-height: 0;
+  display: block;
   filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.4));
+  overflow: hidden;
 }
 </style>

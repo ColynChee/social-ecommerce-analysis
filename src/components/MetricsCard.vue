@@ -18,7 +18,8 @@ export default {
 .metric-card {
   background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
   color: var(--text-accent, #00d4ff);
-  padding: 24px;
+  padding: 12px 18px;
+  min-height: 130px;
   border-radius: 14px;
   text-align: center;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -27,6 +28,11 @@ export default {
   position: relative;
   overflow: hidden;
   backdrop-filter: blur(10px);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .metric-card::before {
@@ -49,8 +55,8 @@ export default {
 }
 
 .icon {
-  font-size: 32px;
-  margin-bottom: 12px;
+  font-size: 28px;
+  margin-bottom: 8px;
   display: block;
   position: relative;
   z-index: 1;
@@ -58,7 +64,7 @@ export default {
 }
 
 .label {
-  font-size: 16px;
+  font-size: 15px;
   opacity: 0.9;
   margin-bottom: 10px;
   font-weight: 500;
@@ -69,7 +75,7 @@ export default {
 }
 
 .value {
-  font-size: 36px;
+  font-size: 34px;
   font-weight: 700;
   position: relative;
   z-index: 1;
