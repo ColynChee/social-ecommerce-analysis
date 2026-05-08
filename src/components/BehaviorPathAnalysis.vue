@@ -32,8 +32,8 @@
         >
           <defs>
             <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#00d4ff" />
-              <stop offset="100%" stop-color="#7c3aed" />
+              <stop offset="0%" :stop-color="pathStartColor" />
+              <stop offset="100%" :stop-color="pathEndColor" />
             </linearGradient>
           </defs>
 
@@ -44,7 +44,7 @@
             fill="none"
             stroke="url(#pathGradient)"
             :stroke-width="link.width"
-            stroke-opacity="0.45"
+            :stroke-opacity="pathOpacity"
             stroke-linecap="round"
           />
 
@@ -58,12 +58,15 @@
               width="112"
               height="40"
               rx="12"
-              class="node-box"
+              :fill="nodeBoxFill"
+              :stroke="nodeBoxStroke"
+              stroke-width="1.6"
             />
             <text
               :x="node.x"
               :y="node.y + 5"
               text-anchor="middle"
+              :fill="nodeTextFill"
               class="node-text"
             >
               {{ node.name }}
@@ -166,12 +169,14 @@ export default {
 
     const visualNodes = computed(() => {
       const usedNames = new Set()
+
       rawLinks.value.forEach(link => {
         usedNames.add(link.source)
         usedNames.add(link.target)
       })
 
       const names = nodeOrder.filter(name => usedNames.has(name))
+
       const columns = {
         '浏览': 0,
         '社交互动': 1,
@@ -216,9 +221,11 @@ export default {
 
     const nodeMap = computed(() => {
       const map = {}
+
       visualNodes.value.forEach(node => {
         map[node.name] = node
       })
+
       return map
     })
 
@@ -234,6 +241,7 @@ export default {
           const source = nodeMap.value[link.source]
           const target = nodeMap.value[link.target]
           const midX = (source.x + target.x) / 2
+
           const path = `M ${source.x + 56} ${source.y} C ${midX} ${source.y}, ${midX} ${target.y}, ${target.x - 56} ${target.y}`
 
           return {
@@ -241,6 +249,30 @@ export default {
             width: Math.max(2, (Number(link.value || 0) / maxValue) * 28)
           }
         })
+    })
+
+    const nodeBoxFill = computed(() => {
+      return props.isDark ? 'rgba(15, 23, 41, 0.94)' : 'rgba(255, 255, 255, 0.98)'
+    })
+
+    const nodeBoxStroke = computed(() => {
+      return props.isDark ? 'rgba(0, 212, 255, 0.45)' : 'rgba(0, 153, 204, 0.55)'
+    })
+
+    const nodeTextFill = computed(() => {
+      return props.isDark ? '#ffffff' : '#1a1a2e'
+    })
+
+    const pathStartColor = computed(() => {
+      return props.isDark ? '#00d4ff' : '#0099cc'
+    })
+
+    const pathEndColor = computed(() => {
+      return props.isDark ? '#7c3aed' : '#5b6ee1'
+    })
+
+    const pathOpacity = computed(() => {
+      return props.isDark ? 0.48 : 0.62
     })
 
     const formatNumber = (value) => {
@@ -258,6 +290,12 @@ export default {
       visualNodes,
       visualLinks,
       topPaths,
+      nodeBoxFill,
+      nodeBoxStroke,
+      nodeTextFill,
+      pathStartColor,
+      pathEndColor,
+      pathOpacity,
       formatNumber,
       formatPercent
     }
@@ -288,6 +326,7 @@ export default {
 .section-header p {
   margin: 0;
   opacity: 0.8;
+  line-height: 1.6;
 }
 
 .summary-grid {
@@ -328,26 +367,21 @@ export default {
   font-size: 13px;
   opacity: 0.75;
   margin-bottom: 14px;
+  line-height: 1.6;
 }
 
 .path-svg {
   width: 100%;
   min-height: 360px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-btn);
   border-radius: 16px;
   border: 1px solid var(--border-color);
 }
 
-.node-box {
-  fill: rgba(15, 23, 41, 0.92);
-  stroke: var(--border-color);
-  stroke-width: 1.5;
-}
-
 .node-text {
-  fill: var(--text-primary);
   font-size: 14px;
   font-weight: 700;
+  pointer-events: none;
 }
 
 .ranking-table {
@@ -373,7 +407,8 @@ export default {
 .ranking-row {
   padding: 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.12);
 }
 
 .path-name {
@@ -407,5 +442,17 @@ export default {
   padding: 30px;
   text-align: center;
   opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .summary-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+
+  .ranking-header,
+  .ranking-row {
+    grid-template-columns: 1fr 80px 70px;
+    font-size: 13px;
+  }
 }
 </style>
