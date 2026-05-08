@@ -1,66 +1,66 @@
 <template>
   <div class="filter-panel">
-    <!-- Age group filter -->
+    <!-- 年龄段筛选 -->
     <div class="filter-group">
       <div class="filter-label">年龄段</div>
       <div class="filter-buttons">
         <button
-          :class="['filter-btn', { active: activeFilter === 'all' && filterType === 'age' }]"
-          @click="selectFilter('age', 'all')"
+          :class="['filter-btn', { active: activeAge === 'all' }]"
+          @click="selectAge('all')"
         >
           全部
         </button>
         <button
           v-for="age in ageGroups"
           :key="age"
-          :class="['filter-btn', { active: activeFilter === `age_${age}` }]"
-          @click="selectFilter('age', `age_${age}`)"
+          :class="['filter-btn', { active: activeAge === age }]"
+          @click="selectAge(age)"
         >
           {{ age }}
         </button>
       </div>
     </div>
 
-    <!-- Gender filter -->
+    <!-- 性别筛选 -->
     <div class="filter-group">
       <div class="filter-label">性别</div>
       <div class="filter-buttons">
         <button
-          :class="['filter-btn', { active: activeFilter === 'all' && filterType === 'gender' }]"
-          @click="selectFilter('gender', 'all')"
+          :class="['filter-btn', { active: activeGender === 'all' }]"
+          @click="selectGender('all')"
         >
           全部
         </button>
         <button
-          :class="['filter-btn', { active: activeFilter === 'gender_male' }]"
-          @click="selectFilter('gender', 'gender_male')"
+          :class="['filter-btn', { active: activeGender === 'male' }]"
+          @click="selectGender('male')"
         >
           男性
         </button>
         <button
-          :class="['filter-btn', { active: activeFilter === 'gender_female' }]"
-          @click="selectFilter('gender', 'gender_female')"
+          :class="['filter-btn', { active: activeGender === 'female' }]"
+          @click="selectGender('female')"
         >
           女性
         </button>
       </div>
     </div>
 
-    <!-- User level filter -->
+    <!-- 用户等级筛选 -->
     <div class="filter-group">
       <div class="filter-label">用户等级</div>
       <div class="filter-buttons">
         <button
-          :class="['filter-btn', { active: activeFilter === 'all' && filterType === 'level' }]"
-          @click="selectFilter('level', 'all')"
+          :class="['filter-btn', { active: activeLevel === 'all' }]"
+          @click="selectLevel('all')"
         >
           全部
         </button>
         <button
           v-for="level in userLevels"
           :key="level"
-          :class="['filter-btn', { active: activeFilter === `level_${level}` }]"
-          @click="selectFilter('level', `level_${level}`)"
+          :class="['filter-btn', { active: activeLevel === String(level) }]"
+          @click="selectLevel(String(level))"
         >
           {{ level }}级
         </button>
@@ -83,22 +83,44 @@ export default {
   setup(props, { emit }) {
     const ageGroups = ['18-25', '26-35', '36-45', '46+']
 
-    const filterType = ref('age')
-    const activeFilter = ref('all')
+    // 三个维度独立的视觉状态
+    const activeAge = ref('all')
+    const activeGender = ref('all')
+    const activeLevel = ref('all')
 
-    const selectFilter = (type, filter) => {
-      filterType.value = type
-      activeFilter.value = filter
+    const selectAge = (value) => {
+      activeAge.value = value
+      // 重置其他维度为 'all'，保持与原有单选行为一致
+      activeGender.value = 'all'
+      activeLevel.value = 'all'
+      const segmentKey = value === 'all' ? 'all' : `age_${value}`
+      emit('filter-change', segmentKey)
+    }
 
-      const segmentKey = filter === 'all' ? 'all' : filter
+    const selectGender = (value) => {
+      activeGender.value = value
+      activeAge.value = 'all'
+      activeLevel.value = 'all'
+      const segmentKey = value === 'all' ? 'all' : `gender_${value}`
+      emit('filter-change', segmentKey)
+    }
+
+    const selectLevel = (value) => {
+      activeLevel.value = value
+      activeAge.value = 'all'
+      activeGender.value = 'all'
+      const segmentKey = value === 'all' ? 'all' : `level_${value}`
       emit('filter-change', segmentKey)
     }
 
     return {
       ageGroups,
-      filterType,
-      activeFilter,
-      selectFilter
+      activeAge,
+      activeGender,
+      activeLevel,
+      selectAge,
+      selectGender,
+      selectLevel
     }
   }
 }
