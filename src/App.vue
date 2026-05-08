@@ -1,11 +1,18 @@
 <template>
   <div class="app" :class="{ 'light-mode': !isDark }">
     <div class="header">
-      <h1>社交电商用户行为分析</h1>
-      <button class="theme-toggle" @click="isDark = !isDark" :aria-label="isDark ? '切换浅色模式' : '切换深色模式'">
-        {{ isDark ? '☀️' : '🌙' }}
-      </button>
-    </div>
+  <h1>社交电商用户行为分析</h1>
+
+  <div class="header-actions">
+    <button class="doc-button" @click="showDocumentation = true">
+      说明文档
+    </button>
+
+    <button class="theme-toggle" @click="isDark = !isDark" :aria-label="isDark ? '切换浅色模式' : '切换深色模式'">
+      {{ isDark ? '☀️' : '🌙' }}
+    </button>
+  </div>
+</div>
 
     <!-- Tab navigation -->
     <div class="tab-nav" role="tablist">
@@ -216,6 +223,12 @@
       </div>
     </div>
 
+    <ProjectDocumentation
+  v-if="showDocumentation"
+  :isDark="isDark"
+  @close="showDocumentation = false"
+/>
+
     <div class="footer">
       <p>社交电商用户行为分析系统 | 数据驱动的消费洞察</p>
     </div>
@@ -236,6 +249,7 @@ import SocialInteractionAnalysis from './components/SocialInteractionAnalysis.vu
 import BehaviorPathAnalysis from './components/BehaviorPathAnalysis.vue'
 import ProductFilterPanel from './components/ProductFilterPanel.vue'
 import ProductInsights from './components/ProductInsights.vue'
+import ProjectDocumentation from './components/ProjectDocumentation.vue'
 
 export default {
   components: {
@@ -250,7 +264,8 @@ export default {
     SocialInteractionAnalysis,
     BehaviorPathAnalysis,
     ProductFilterPanel,
-    ProductInsights
+    ProductInsights,
+    ProjectDocumentation
   },
   setup() {
     const activeTab = ref('overview')
@@ -261,6 +276,7 @@ export default {
     const currentProductSegment = ref('all')
     const isDark = ref(true)
     const expandedChart = ref(null)
+    const showDocumentation = ref(false)
     const loading = ref(true)
     const error = ref(null)
 
@@ -371,6 +387,7 @@ export default {
       handleProductFilterChange,
       isDark,
       expandedChart,
+      showDocumentation,
       loading,
       error
     }
@@ -488,11 +505,46 @@ export default {
   filter: drop-shadow(0 0 10px rgba(0, 153, 204, 0.15));
 }
 
-.theme-toggle {
+.header-actions {
   position: absolute;
   right: 30px;
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+}
+
+.doc-button {
+  background: rgba(0, 212, 255, 0.12);
+  color: white;
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.18);
+  white-space: nowrap;
+}
+
+.doc-button:hover {
+  border-color: #00d4ff;
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.38);
+  transform: translateY(-1px);
+}
+
+.light-mode .doc-button {
+  color: #1a1a2e;
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(0, 153, 204, 0.35);
+}
+
+.theme-toggle {
+  position: static;
+  transform: none;
   background: var(--bg-btn);
   border: 2px solid var(--border-color);
   border-radius: 50%;
@@ -504,13 +556,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
 }
 
 .theme-toggle:hover {
   border-color: var(--border-hover);
   box-shadow: 0 0 15px var(--shadow-glow);
-  transform: translateY(-50%) scale(1.1);
+  transform: scale(1.1);
 }
 
 .subtitle {
@@ -964,5 +1015,27 @@ export default {
     padding: 10px 16px;
     font-size: 14px;
   }
+
+  @media (max-width: 768px) {
+  .header-actions {
+    position: relative;
+    right: auto;
+    top: auto;
+    transform: none;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .doc-button {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .theme-toggle {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+}
 }
 </style>
